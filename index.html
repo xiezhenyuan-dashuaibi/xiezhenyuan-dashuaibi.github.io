@@ -3,86 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的个人主页</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-        }
-        h2 {
-            color: #555;
-        }
-        .experience-item {
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .experience-item:last-child {
-            border-bottom: none;
-        }
-    </style>
+    <title>你的名字 - 梦幻个人主页</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="dreamy-background">
+    <header class="site-header animate__fade-in-down">
+        <h1>谢镇远</h1>
+        <p>个人经历主页</p>
+    </header>
+
     <div class="container">
-        <header>
-            <h1>[您的名字]</h1>
-            <p>[您的一句话简介，例如：对技术充满热情的开发者 / 经验丰富的市场分析师]</p>
-            <p>联系方式: [您的邮箱地址] | 领英: [您的领英链接 (可选)] | GitHub: [您的GitHub主页链接 (可选)]</p>
-        </header>
-
-        <section id="about">
-            <h2>关于我</h2>
-            <p>[在这里写一段关于您自己的介绍，您的专业领域、兴趣等。]</p>
+        <section class="resume-section animate__fade-in-up">
+            <h2>我的简历-2025/5更新</h2>
+            <div class="resume-image-container">
+                <img src="xzy.jpeg" alt="你的简历图片" class="animate__zoom-in">
+                </div>
         </section>
 
-        <section id="experience">
-            <h2>实习/工作经历</h2>
-            <div class="experience-item">
-                <h3>[实习/公司名称] - [您的职位]</h3>
-                <p><em>[开始日期] – [结束日期]</em></p>
-                <ul>
-                    <li>[职责或成就1：例如，负责PEST战略分析中的经济分析，研究美联储动向及其对中国宏观经济的影响。]</li>
-                    <li>[职责或成就2：运用蒙代尔-弗莱明模型进行相关分析。]</li>
-                    <li>[职责或成就3：其他具体工作内容或成果。]</li>
-                </ul>
+        <section class="experience-section">
+            <h2>我的经历</h2>
+
+            <div class="experience-item animate__slide-in-left">
+                <h3>汽车销量预测系统-Futurus实习期间</h3>
+                <p>
+                    创新性地结合传统机器学习预测（定量）与大语言模型预测（定性），在公司内部数据库建设不完善的情况下，依旧实现了高精度、高命中率的预测。
+                </p>
+                <a href="detail.html?item=salesprediction" class="btn view-details-btn animate__fade-in">查看详情</a>
             </div>
-            </section>
 
-        <section id="projects">
-            <h2>项目经验 (可选)</h2>
-            <div class="experience-item">
-                <h3>[项目名称]</h3>
-                <p>[项目简介，您在项目中扮演的角色和贡献。]</p>
+            <div class="experience-item animate__slide-in-left" style="animation-delay: 0.2s;">
+                <h3>美联储货币政策分析-Futurus实习期间</h3>
+                <p>
+                    基于蒙代尔弗莱明模型，跟踪与分析美联储货币政策对中国宏观经济的影响，并识别其政策意图与潜在转向，为公司提供了关于中国宏观经济环境及外部风险的见解。
+                </p>
+                <a href="detail.html?item=pest" class="btn view-details-btn animate__fade-in" style="animation-delay: 0.4s;">查看详情</a>
             </div>
-        </section>
 
-        <section id="skills">
-            <h2>技能</h2>
-            <ul>
-                <li>[技能1]</li>
-                <li>[技能2]</li>
-                <li>[技能3]</li>
-                </ul>
-        </section>
 
-        <footer>
-            <p>&copy; [当前年份] [您的名字]. 版权所有。</p>
-        </footer>
+        </section>
     </div>
-</body>
+
+    <footer class="site-footer animate__fade-in-up">
+        <p>&copy; 谢镇远. All rights reserved.</p>
+    </footer>
+
+    </body>
 </html>
