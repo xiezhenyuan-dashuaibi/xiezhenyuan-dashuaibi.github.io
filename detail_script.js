@@ -86,6 +86,7 @@ function generateTableOfContents(contentElement, tocElement) {
     let currentUl = rootUl;
     const ulStack = [rootUl]; // 栈顶是当前要添加li的ul
     const levelStack = [1]; // 栈顶是当前ul对应的父级标题级别 (rootUl的父级视为级别1)
+    const usedIds = new Set(); // 用于确保生成的ID在本轮目录生成中是唯一的
 
     headings.forEach(heading => {
         // 获取标题文本
@@ -95,9 +96,19 @@ function generateTableOfContents(contentElement, tocElement) {
 
         // 为标题生成或获取 ID，用于锚点链接
         if (!heading.id) {
-            // 简单的 ID 生成：文本转小写，空格换成中划线，移除特殊字符
-            heading.id = headingText.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-            // 避免ID重复，虽然简单生成可能重复，实际应用需要更复杂的逻辑
+            let baseId = slugify(headingText); // 使用 slugify 函数
+            if (!baseId) { // 如果 slugify 返回空（例如标题全是特殊字符）
+                baseId = 'section'; // 提供一个默认的基础ID
+            }
+            let finalId = baseId;
+            let counter = 1;
+            // 确保ID在整个文档中是唯一的，并且在当前处理的标题中也是唯一的
+            while (document.getElementById(finalId) || usedIds.has(finalId)) {
+                finalId = `${baseId}-${counter}`;
+                counter++;
+            }
+            heading.id = finalId;
+            usedIds.add(finalId); // 记录已使用的ID
         }
         const headingId = heading.id;
 
@@ -153,74 +164,63 @@ function generateTableOfContents(contentElement, tocElement) {
  */
 function setupTableOfContentsHighlighting(contentElement, tocElement) {
     const tocLinks = tocElement.querySelectorAll('.toc-link');
-    const headings = contentElement.querySelectorAll('h2, h3, h4, h5, h6'); // 查找需要监听的标题
+    const headings = Array.from(contentElement.querySelectorAll('h2, h3, h4, h5, h6')); // 转换为数组，方便处理
 
-    // 使用 IntersectionObserver 监听标题是否进入/离开视口
+    if (headings.length === 0 || tocLinks.length === 0) {
+        return; // 没有标题或目录链接，无需设置高亮
+    }
+
     const observerOptions = {
-        rootMargin: '0px 0px -60% 0px', // 顶部留出60%的区域作为触发区域，避免目录过早或过晚高亮
-        threshold: 0 // 标题的任意部分进入视口就触发
+        rootMargin: '0px 0px -60% 0px', // 视口顶部的 40%区域为触发区域
+        threshold: 0 // 标题的任意部分进入该区域即触发
     };
+
+    const currentlyIntersectingHeadings = new Set();
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-            const id = entry.target.id; // 被监听的标题的ID
-            const correspondingLink = tocElement.querySelector(`a[href="#${id}"]`);
+            if (entry.isIntersecting) {
+                currentlyIntersectingHeadings.add(entry.target);
+            } else {
+                currentlyIntersectingHeadings.delete(entry.target);
+            }
+        });
 
-            if (correspondingLink) {
-                if (entry.isIntersecting) {
-                    // 如果标题进入视口，找到对应的目录链接并添加 active 类
-                    // 这里只添加，后面会处理移除逻辑
-                    correspondingLink.classList.add('active');
-                    // 可能需要移除其他同级别或子级别的高亮，以保证只有一个主高亮
-                     // 简化处理：当一个新的高亮出现时，移除所有其他链接的高亮
-                     // 注意：这种简单方式在高层级标题出现时可能会短暂移除子标题高亮
-                     tocLinks.forEach(link => {
-                         if (link !== correspondingLink && link.classList.contains('active')) {
-                            // link.classList.remove('active'); // 暂时不移除，等待 isIntersecting false
-                         }
-                     });
+        let closestHeadingToTop = null;
+        let minDistance = Infinity;
 
-                } else {
-                    // 如果标题离开视口，移除对应的目录链接的 active 类
-                    correspondingLink.classList.remove('active');
+        currentlyIntersectingHeadings.forEach(heading => {
+            const rect = heading.getBoundingClientRect();
+            // 判断标题顶部是否在视口内，并且在预设的顶部激活区域 (0% 到 40% viewport height)
+            if (rect.top >= 0 && rect.top < window.innerHeight * 0.4) {
+                if (rect.top < minDistance) {
+                    minDistance = rect.top;
+                    closestHeadingToTop = heading;
                 }
             }
         });
 
-        // 复杂高亮逻辑：找到当前最顶部的可视标题，只高亮它对应的链接
-        // 这是 IntersectionObserver 的一个常见痛点，isIntersecting 只能告诉你是否在区域内，
-        // 无法直接告诉你“最顶部”是哪个。更精确的方法通常结合 scroll 事件监听和 getBoundingClientRect。
-        // 为了简单起见，我们先用一个简化的方法：在每次 IntersectionObserver 回调后，
-        // 找到当前所有 active 的链接中对应的 heading 距离顶部最近的那个，作为“真正”active 的链接。
+        // 移除所有链接的高亮
+        tocLinks.forEach(link => link.classList.remove('active'));
 
-         let closestHeadingToTop = null;
-         let minDistance = Infinity;
-         let currentActiveLink = null;
+        // 高亮距离顶部最近的那个标题对应的链接
+        if (closestHeadingToTop) {
+            const id = closestHeadingToTop.id;
+            const currentActiveLink = tocElement.querySelector(`a[href="#${id}"]`);
+            if (currentActiveLink) {
+                currentActiveLink.classList.add('active');
 
-         headings.forEach(heading => {
-             const rect = heading.getBoundingClientRect();
-             // 判断标题是否在触发区域内 (顶部 60% 以下)
-             if (rect.top >= 0 && rect.top <= window.innerHeight * 0.4) { // 标题顶部在视口上方且在顶部40%以内
-                 if (rect.top < minDistance) {
-                      minDistance = rect.top;
-                      closestHeadingToTop = heading;
-                 }
-             }
-         });
-
-         // 移除所有高亮
-         tocLinks.forEach(link => link.classList.remove('active'));
-
-         // 高亮距离顶部最近的那个标题对应的链接
-         if (closestHeadingToTop) {
-             const id = closestHeadingToTop.id;
-             currentActiveLink = tocElement.querySelector(`a[href="#${id}"]`);
-             if (currentActiveLink) {
-                 currentActiveLink.classList.add('active');
-             }
-         }
-
-
+                // 如果目录本身可滚动，则将高亮的目录项滚动到可见区域
+                if (tocElement.scrollHeight > tocElement.clientHeight) {
+                    const tocRect = tocElement.getBoundingClientRect();
+                    const linkRect = currentActiveLink.getBoundingClientRect();
+                    // 如果链接顶部在目录视区之上 或 链接底部在目录视区之下
+                    if (linkRect.top < tocRect.top || linkRect.bottom > tocRect.bottom) {
+                         currentActiveLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+            }
+        }
     }, observerOptions);
 
     // 开始监听所有标题
@@ -228,22 +228,17 @@ function setupTableOfContentsHighlighting(contentElement, tocElement) {
         observer.observe(heading);
     });
 
-    // 可选：处理页面加载时首次定位
-    // 如果URL中有hash (#section1), 页面加载后会直接跳转到该位置，
-    // 需要手动设置初始高亮
+    // 处理页面加载时首次定位高亮 (保持不变)
     const hash = window.location.hash;
     if (hash) {
         try {
+            // 确保DOM元素确实存在
             const targetHeading = document.querySelector(hash);
-            if (targetHeading) {
-                 // 找到对应的目录链接并高亮
+            if (targetHeading && headings.includes(targetHeading)) { // 确保目标是我们要观察的标题之一
                  const correspondingLink = tocElement.querySelector(`a[href="${hash}"]`);
                  if (correspondingLink) {
-                     // 移除所有高亮
                      tocLinks.forEach(link => link.classList.remove('active'));
-                     // 高亮当前链接
                      correspondingLink.classList.add('active');
-                     // 可选：如果侧边栏可滚动，滚动到当前高亮的目录项
                       if (tocElement.scrollHeight > tocElement.clientHeight) {
                            correspondingLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
@@ -252,10 +247,9 @@ function setupTableOfContentsHighlighting(contentElement, tocElement) {
         } catch (e) {
              console.error("Error handling initial hash:", e);
         }
-
     }
 
-     // 可选：平滑滚动到锚点
+     // 平滑滚动到锚点 (保持不变)
      tocElement.addEventListener('click', (event) => {
          if (event.target.tagName === 'A' && event.target.classList.contains('toc-link')) {
               const href = event.target.getAttribute('href');
@@ -263,20 +257,16 @@ function setupTableOfContentsHighlighting(contentElement, tocElement) {
                   const targetId = href.substring(1);
                   const targetElement = document.getElementById(targetId);
                   if (targetElement) {
-                      event.preventDefault(); // 阻止默认的哈希跳转
-                      // 使用 smooth scroll
+                      event.preventDefault();
                       targetElement.scrollIntoView({
                           behavior: 'smooth',
-                          block: 'start' // 滚动到元素顶部
+                          block: 'start'
                       });
-                      // 更新URL的hash，但不要触发滚动（pushState 不会触发滚动）
                        history.pushState(null, null, href);
                   }
               }
          }
      });
-
-
 }
 
 
